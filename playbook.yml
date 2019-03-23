@@ -18,5 +18,5 @@
         name: "{{ packages }}"
       become: yes
 
-#   - name: 
-#   - name: 
+    - name: Install lxc vagrant plugin
+      command: vagrant plugin install vagrant-lxc
