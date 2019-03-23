@@ -1,0 +1,22 @@
+---
+- hosts: localhost
+
+  vars:
+    repo_name: "{{ playbook_dir }}/turris-openwrt"
+    packages:
+    - vagrant
+    - lxc
+
+  tasks:
+    - name: Clone turris os repo from Gitlab
+      git:
+        repo: https://gitlab.labs.nic.cz/turris/openwrt.git
+        dest: "{{ repo_name}}"
+
+    - name: Ensure that vagrant and lxc are installed
+      apt:
+        name: "{{ packages }}"
+      become: yes
+
+#   - name: 
+#   - name: 
