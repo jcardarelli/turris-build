@@ -24,3 +24,9 @@
       command: vagrant plugin install vagrant-lxc
       when:
         - vagrant_plugins_file['installed'] | json_query("[?installed==vagrant_plugin]")
+
+    - name: Link turris-openwrt/vagrant/Vagrantfile to playbook dir
+      file:
+        state: link
+        src: turris-openwrt/vagrant/Vagrantfile
+        dest: "{{ playbook_dir }}/Vagrantfile"
