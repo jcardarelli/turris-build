@@ -40,6 +40,36 @@
         src: "{{ repo_dir }}/vagrant/vagrant_provision.sh"
         dest: "{{ playbook_dir }}/vagrant/vagrant_provision.sh"
 
+    - name: Setup lxc network
+      block:
+      - name: Add USE_LXC_BRIDGE="true" to /etc/default/lxc-net
+        lineinfile:
+          path: /etc/default/lxc-net
+          line: USE_LXC_BRIDGE="true"
+          create: yes
+
+      - name: Edit /etc/lxc/default.conf
+        lineinfile:
+          path: /etc/lxc/default.conf
+          line: "lxc.network.type = empty"
+          state: absent
+
+      - name: Edit /etc/lxc/default.conf
+        blockinfile:
+          path: /etc/lxc/default.conf
+          insertbefore: BOF
+          marker: ""
+          block: |
+            lxc.network.type = veth
+            lxc.network.link = lxcbr0
+            lxc.network.flags = up
+            lxc.network.hwaddr = "{{ hostvars[inventory_hostname].ansible_default_ipv4.macaddress }}"
+
+      - name: Restart lxc-net
+        systemd:
+          name: lxc-net
+          state: restarted
+
     - name: Start instance of turris omnia dev environment
       shell: "vagrant up --provider=lxc"
       args:
