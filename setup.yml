@@ -48,9 +48,6 @@
       async: 45
       poll: 0
 
-    - debug:
-        var: async_results
-
     - name: Check if the instance is up
       async_status:
         jid: "{{ async_results.ansible_job_id }}"
