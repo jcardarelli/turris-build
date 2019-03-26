@@ -1,3 +1,4 @@
 *.retry
-turris-openwrt/
+openwrt/
+*vagrant/
 Vagrantfile

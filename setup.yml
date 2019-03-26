@@ -1,32 +1,63 @@
 ---
 - hosts: localhost
+  become: yes
 
   vars:
-    repo_name: "{{ playbook_dir }}/turris-openwrt"
+    repo_dir: "{{ playbook_dir }}/openwrt"
     vagrant_plugins_file: "{{lookup('file', '~/.vagrant.d/plugins.json') }}"
     vagrant_plugin: vagrant-lxc
     packages:
-    - vagrant
     - lxc
+    - vagrant
+    - vagrant-lxc
+
+  environment:
+    PATH: "{{ ansible_env.PATH }}"
 
   tasks:
     - name: Clone turris os repo from Gitlab
       git:
         repo: https://gitlab.labs.nic.cz/turris/openwrt.git
-        dest: "{{ repo_name}}"
+        dest: "{{ repo_dir}}"
 
     - name: Ensure that vagrant and lxc are installed
       apt:
         name: "{{ packages }}"
-      become: yes
 
     - name: Install lxc vagrant plugin
       command: vagrant plugin install vagrant-lxc
       when:
         - vagrant_plugins_file['installed'] | json_query("[?installed==vagrant_plugin]")
 
-    - name: Link turris-openwrt/vagrant/Vagrantfile to playbook dir
+    - name: Link Vagrantfile to playbook dir
       file:
         state: link
-        src: turris-openwrt/vagrant/Vagrantfile
+        src: "{{ repo_dir }}/vagrant/Vagrantfile"
         dest: "{{ playbook_dir }}/Vagrantfile"
+
+    - name: Copy vagrant_provision.sh to playbook directory
+      copy:
+        src: "{{ repo_dir }}/vagrant/vagrant_provision.sh"
+        dest: "{{ playbook_dir }}/vagrant/vagrant_provision.sh"
+
+    - name: Start instance of turris omnia dev environment
+      shell: "vagrant up --provider=lxc"
+      args:
+        chdir: "{{ playbook_dir }}"
+      register: async_results
+      async: 45
+      poll: 0
+
+    - debug:
+        var: async_results
+
+    - name: Check if the instance is up
+      async_status:
+        jid: "{{ async_results.ansible_job_id }}"
+      register: async_poll_results
+      until: async_poll_results.finished
+      retries: 30
+      ignore_errors: yes
+
+    - debug:
+        var: async_poll_results
