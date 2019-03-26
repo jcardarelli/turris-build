@@ -48,13 +48,13 @@
           line: USE_LXC_BRIDGE="true"
           create: yes
 
-      - name: Edit /etc/lxc/default.conf
+      - name: Remove "lxc.network.type = empty" from /etc/lxc/default.conf
         lineinfile:
           path: /etc/lxc/default.conf
           line: "lxc.network.type = empty"
           state: absent
 
-      - name: Edit /etc/lxc/default.conf
+      - name: Add lxc network config to /etc/lxc/default.conf
         blockinfile:
           path: /etc/lxc/default.conf
           insertbefore: BOF
