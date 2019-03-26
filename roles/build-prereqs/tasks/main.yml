@@ -1,2 +1,24 @@
 ---
 # tasks file for roles/build-prereqs
+- name: Install packages with apt-get
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+    - build-essential
+    - bzr
+    - cvs
+    - gawk
+    - gcc-multilib
+    - flex
+    - git-core
+    - gettext
+    - libncurses5-dev
+    - libssl-dev
+    - libxml-parser-perl
+    - openjdk-6-jdk
+    - subversion
+    - unzip
+    - zip
+    - zlib1g-dev

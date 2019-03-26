@@ -1,6 +1,5 @@
 ---
 - hosts: localhost
-  become: yes
 
   vars:
     repo_dir: "{{ playbook_dir }}/openwrt"
@@ -19,6 +18,7 @@
       git:
         repo: https://gitlab.labs.nic.cz/turris/openwrt.git
         dest: "{{ repo_dir}}"
+        force: yes
 
     - name: Ensure that vagrant and lxc are installed
       apt:
@@ -29,16 +29,10 @@
       when:
         - vagrant_plugins_file['installed'] | json_query("[?installed==vagrant_plugin]")
 
-    - name: Link Vagrantfile to playbook dir
-      file:
-        state: link
-        src: "{{ repo_dir }}/vagrant/Vagrantfile"
+    - name: Template Vagrantfile to playbook dir
+      template:
+        src: "{{ playbook_dir }}/Vagrantfile.j2"
         dest: "{{ playbook_dir }}/Vagrantfile"
-
-    - name: Copy vagrant_provision.sh to playbook directory
-      copy:
-        src: "{{ repo_dir }}/vagrant/vagrant_provision.sh"
-        dest: "{{ playbook_dir }}/vagrant/vagrant_provision.sh"
 
     - name: Setup lxc network
       block:
@@ -57,6 +51,7 @@
       - name: Add lxc network config to /etc/lxc/default.conf
         blockinfile:
           path: /etc/lxc/default.conf
+          state: present
           insertbefore: BOF
           marker: ""
           block: |
@@ -69,6 +64,7 @@
         systemd:
           name: lxc-net
           state: restarted
+      become: yes
 
     - name: Start instance of turris omnia dev environment
       shell: "vagrant up --provider=lxc"
@@ -85,3 +81,40 @@
       until: async_poll_results.finished
       retries: 30
       ignore_errors: yes
+
+    - block:
+      - name: Get IP of vagrant LXC container
+        shell: vagrant ssh-config | awk -F' ' '/HostName /{print $2}'
+        register: vagrant_ssh_ip_out
+
+      - name: Get IdentityFile of vagrant LXC container
+        shell: vagrant ssh-config | awk -F' ' '/IdentityFile /{print $2}'
+        register: vagrant_ssh_idfile_out
+
+      - name: Get User of vagrant LXC container
+        shell: vagrant ssh-config | awk -F' ' '/User /{print $2}'
+        register: vagrant_ssh_user_out
+
+      - name: Get Port of vagrant LXC container
+        shell: vagrant ssh-config | awk -F' ' '/Port /{print $2}'
+        register: vagrant_ssh_port_out
+
+      - set_fact:
+          vagrant_ip: "{{ vagrant_ssh_ip_out.stdout }}"
+          vagrant_id_file: "{{ vagrant_ssh_idfile_out.stdout }}"
+          vagrant_user: "{{ vagrant_ssh_user_out.stdout }}"
+          vagrant_port: "{{ vagrant_ssh_port_out.stdout }}"
+
+      - add_host:
+          hostname: vagrant
+          ansible_ssh_host: "{{ vagrant_ip }}"
+          ansible_ssh_port: "{{ vagrant_port }}"
+          ansible_ssh_user: "{{ vagrant_user }}"
+          ansible_ssh_private_key_file: "{{ vagrant_id_file }}"
+      tags: ssh
+
+- hosts: vagrant
+  tags: provision
+  roles:
+    - build-prereqs
+  become: yes
